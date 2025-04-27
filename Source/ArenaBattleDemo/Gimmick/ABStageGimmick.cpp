@@ -1,23 +1,21 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Gimmick/ABStageGimmick.h"
-
-#include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/BoxComponent.h"
 #include "Physics/ABCollision.h"
 #include "Character/ABCharacterNonPlayer.h"
-#include "engine/OverlapResult.h"
 #include "Item/ABItemBox.h"
+#include "Engine/OverlapResult.h"
 
 // Sets default values
 AABStageGimmick::AABStageGimmick()
 {
-	//Stage Section.
+	// State Section.
 	Stage = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Stage"));
 	RootComponent = Stage;
 
-	//리소스 설정.
+	// 리소스 설정.
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> StageMeshRef(TEXT("/Game/ArenaBattle/Environment/Stages/SM_SQUARE.SM_SQUARE"));
 	if (StageMeshRef.Object)
 	{
@@ -29,70 +27,88 @@ AABStageGimmick::AABStageGimmick()
 	StageTrigger->SetupAttachment(Stage);
 	StageTrigger->SetRelativeLocation(FVector(0.0f, 0.0f, 250.0f));
 	StageTrigger->SetCollisionProfileName(CPROFILE_ABTRIGGER);
-	StageTrigger->OnComponentBeginOverlap.AddDynamic(this, &AABStageGimmick::OnStageTriggerBeginOverlap);
+	StageTrigger->OnComponentBeginOverlap.AddDynamic(
+		this,
+		&AABStageGimmick::OnStageTriggerBeginOverlap
+	);
 
-	//Gate Section.
-	static FName GateSockets[] = {
+	// Gate Section.
+	static FName GateSockets[] =
+	{
 		TEXT("+XGate"),
 		TEXT("-XGate"),
 		TEXT("+YGate"),
 		TEXT("-YGate")
 	};
 
-	//리소스 로드(문).
-	static ConstructorHelpers::FObjectFinder<UStaticMesh>GateMeshRef(TEXT("/Game/ArenaBattle/Environment/Props/SM_GATE.SM_GATE"));
+	// 리소스 로드.
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> GateMeshRef(TEXT("/Game/ArenaBattle/Environment/Props/SM_GATE.SM_GATE"));
 
-	//게이트 생성.
+	// 게이트 생성.
 	for (const FName& GateSocket : GateSockets)
 	{
-		//컴포넌트 생성.
+		// 컴포넌트 생성.
 		UStaticMeshComponent* Gate = CreateDefaultSubobject<UStaticMeshComponent>(GateSocket);
-		//생성한 스태틱 메시 컴포넌트에 애셋 설정.
+
+		// 생성한 스태틱 메시 컴포넌트에 애셋 설정.
 		if (GateMeshRef.Object)
 		{
 			Gate->SetStaticMesh(GateMeshRef.Object);
 		}
 
-		//캄포넌트 설정.
+		// 컴포넌트 설정.
 		Gate->SetupAttachment(Stage, GateSocket);
 		Gate->SetRelativeLocation(FVector(0.0f, -80.0f, 0.0f));
 		Gate->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
-		
-		//생성한 컴포넌트를 맵에 추가.
+
+		// 생성한 컴포넌트를 맵에 추가.
 		Gates.Add(GateSocket, Gate);
 
-		//문마다 배치할 BoxComponent 생성 및 설정.
+		// 문마다 배치할 BoxComponent 생성 및 설정.
 		FName TriggerName = *GateSocket.ToString().Append("Trigger");
 
-		//컴포넌트 생성.
+		// 컴포넌트 생성.
 		UBoxComponent* GateTrigger = CreateDefaultSubobject<UBoxComponent>(TriggerName);
 
-		//컴포넌트 설정.
+		// 컴포넌트 설정.
 		GateTrigger->SetBoxExtent(FVector(100.0f, 100.0f, 300.0f));
 		GateTrigger->SetupAttachment(Stage, GateSocket);
 		GateTrigger->SetRelativeLocation(FVector(70.0f, 0.0f, 250.0f));
 		GateTrigger->SetCollisionProfileName(CPROFILE_ABTRIGGER);
-		GateTrigger->OnComponentBeginOverlap.AddDynamic(this, &AABStageGimmick::OnGateTriggerBeginOverlap);
+		GateTrigger->OnComponentBeginOverlap.AddDynamic(
+			this,
+			&AABStageGimmick::OnGateTriggerBeginOverlap
+		);
 
-		//태그 설정.
+		// 태그 설정.
 		GateTrigger->ComponentTags.Add(GateSocket);
-		
-		
-		//생성한 컴포넌트를 배열에 추가.
+
+		// 생성한 컴포넌트를 배열에 추가.
 		GateTriggers.Add(GateTrigger);
 	}
 
+	// 시작할 때는 준비 상태로 설정.
 	CurrentState = EStageState::Ready;
 
-	//열거형 델리게이트 맵 설정.
-	StageChangedActions.Add(EStageState::Ready, FOnStageChangedDelegate::CreateUObject(this, &AABStageGimmick::SetReady));
-	StageChangedActions.Add(EStageState::Fight, FOnStageChangedDelegate::CreateUObject(this, &AABStageGimmick::SetFight));
+	// 열거형 - 델리게이트 맵 설정.
+	StageChangedActions.Add(
+		EStageState::Ready,
+		FOnStageChangedDelegate::CreateUObject(this, &AABStageGimmick::SetReady)
+	);
+
+	StageChangedActions.Add(
+		EStageState::Fight,
+		FOnStageChangedDelegate::CreateUObject(this, &AABStageGimmick::SetFight)
+	);
+
 	StageChangedActions.Add(EStageState::Reward, FOnStageChangedDelegate::CreateUObject(this, &AABStageGimmick::SetChooseReward));
+
 	StageChangedActions.Add(EStageState::Next, FOnStageChangedDelegate::CreateUObject(this, &AABStageGimmick::SetChooseNext));
 
-	//Fight Section.
+	// Fight Section.
 	OpponentSpawnTime = 2.0f;
-	//생성할 NPC 클래스 타입 지정.
+
+	// 생성할 NPC 클래스 타입 지정.
 	OpponentClass = AABCharacterNonPlayer::StaticClass();
 
 	// Reward Section.
@@ -115,18 +131,16 @@ void AABStageGimmick::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
-	//OnConstruction이 호출 될때 상태값도 갱신되도록 처리.
+	// OnConstruction이 호출될 때 상태 값도 갱신되도록 처리.
 	SetState(CurrentState);
 }
 
 void AABStageGimmick::SetState(EStageState InNewState)
 {
-	//if (CurrentState == InNewState) return;
-	
-	//현재 상태 업데이트.
+	// 현재 상태 업데이트.
 	CurrentState = InNewState;
 
-	//전달된 상태에 맵에 포함돼 있으면 델리게이트 실행.
+	// 전달된 상태에 맵에 포함돼 있으면 델리게이트 실행.
 	if (StageChangedActions.Contains(InNewState))
 	{
 		StageChangedActions[CurrentState].StageChangedDelegate.ExecuteIfBound();
@@ -135,7 +149,7 @@ void AABStageGimmick::SetState(EStageState InNewState)
 
 void AABStageGimmick::OnStageTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	//캐릭터가 스테이지에 입장하면 대전 상태로 전환.
+	// 캐릭터가 스테이지에 입장하면 대전 상태로 전환.
 	SetState(EStageState::Fight);
 }
 
@@ -150,14 +164,14 @@ void AABStageGimmick::SetReady()
 		GateTrigger->SetCollisionProfileName(TEXT("NoCollision"));
 	}
 
-	// 모든 문 열기.
+	// 준비 상태일 때는 문이 열려있도록 설정.
 	OpenAllGates();
 }
 
 void AABStageGimmick::SetFight()
 {
 	// 가운데 트리거 활성화.
-	StageTrigger->SetCollisionProfileName("NoCollision");
+	StageTrigger->SetCollisionProfileName(TEXT("NoCollision"));
 
 	// 플레이어가 게이트와 상호작용하지 않도록 콜리전 끄기.
 	for (const auto& GateTrigger : GateTriggers)
@@ -168,20 +182,20 @@ void AABStageGimmick::SetFight()
 	// 모든 문 닫기.
 	CloseAllGates();
 
-	//NPC 생성 코드.
+	// NPC 생성.
 	GetWorld()->GetTimerManager().SetTimer(
-		OpponentTimerHandle,			//타이머 핸들.
-		this,								//콜백 함수 소유 객체.
-		&AABStageGimmick::OpponentSpawn,	//콜백 함수.
-		OpponentSpawnTime,					//타이머 시간 값.
-		false								//반복 여부.
-		);
+		OpponentTimerHandle,				// 타이머 핸들.
+		this,								// 콜백 함수 소유 객체.
+		&AABStageGimmick::OpponentSpawn,	// 콜백 함수.
+		OpponentSpawnTime,					// 타이머 시간 값.
+		false								// 반복 여부.
+	);
 }
 
 void AABStageGimmick::SetChooseReward()
 {
 	// 가운데 트리거 활성화.
-	StageTrigger->SetCollisionProfileName("NoCollision");
+	StageTrigger->SetCollisionProfileName(TEXT("NoCollision"));
 
 	// 플레이어가 게이트와 상호작용하지 않도록 콜리전 끄기.
 	for (const auto& GateTrigger : GateTriggers)
@@ -192,13 +206,14 @@ void AABStageGimmick::SetChooseReward()
 	// 모든 문 닫기.
 	CloseAllGates();
 
+	// 보상 상자 생성.
 	SpawnRewardBoxes();
 }
 
 void AABStageGimmick::SetChooseNext()
 {
 	// 가운데 트리거 활성화.
-	StageTrigger->SetCollisionProfileName("NoCollision");
+	StageTrigger->SetCollisionProfileName(TEXT("NoCollision"));
 
 	// 플레이어가 게이트와 상호작용하지 않도록 콜리전 끄기.
 	for (const auto& GateTrigger : GateTriggers)
@@ -206,7 +221,7 @@ void AABStageGimmick::SetChooseNext()
 		GateTrigger->SetCollisionProfileName(CPROFILE_ABTRIGGER);
 	}
 
-	// 모든 문 열기.
+	// 모든 문 열기 (다른 스테이지로 이동할 수 있도록).
 	OpenAllGates();
 }
 
@@ -238,9 +253,9 @@ void AABStageGimmick::OnGateTriggerBeginOverlap(UPrimitiveComponent* OverlappedC
 
 	// 오버랩으로 검사.
 	bool Result = GetWorld()->OverlapMultiByObjectType(
-		OverlapResults,        // 충돌 결과를 반환할 변수.
-		NewLocation,        // 충돌 판정할 위치.
-		FQuat::Identity,    // 회전.
+		OverlapResults,		// 충돌 결과를 반환할 변수.
+		NewLocation,		// 충돌 판정할 위치.
+		FQuat::Identity,	// 회전.
 		// 충돌 대상 오브젝트 채널.
 		FCollisionObjectQueryParams::InitType::AllStaticObjects,
 		// 충돌 판정할 때 사용할 모형.
@@ -249,17 +264,31 @@ void AABStageGimmick::OnGateTriggerBeginOverlap(UPrimitiveComponent* OverlappedC
 		CollisionQueryParams
 	);
 
-	//생성 하려는 위치에 다른 스테이지가 없다면 생성 진행.
+	// 생성하려는 위치에 다른 스테이지가 없다면 생성 진행.
 	if (!Result)
 	{
-		GetWorld()->SpawnActor<AABStageGimmick>(NewLocation, FRotator::ZeroRotator);
-	}
+		FTransform SpawnTransform(NewLocation);
 
+		AABStageGimmick* NewGimmick
+			= GetWorld()->SpawnActorDeferred<AABStageGimmick>(
+				AABStageGimmick::StaticClass(),
+				SpawnTransform
+			);
+
+		// 새로 생성한 스테이지의 숫자를 하나 증가.
+		if (NewGimmick)
+		{
+			NewGimmick->SetStageNum(CurrentStageNum + 1);
+
+			// 생성 완료 처리.
+			NewGimmick->FinishSpawning(SpawnTransform);
+		}
+	}
 }
 
 void AABStageGimmick::OpenAllGates()
 {
-	//문 액터의 배열을 순회 하면서 회전 설정.
+	// 문 액터의 배열을 순회하면서 회전 설정.
 	for (const auto& Gate : Gates)
 	{
 		Gate.Value->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
@@ -268,12 +297,13 @@ void AABStageGimmick::OpenAllGates()
 
 void AABStageGimmick::CloseAllGates()
 {
-	//문 액터의 배열을 순회 하면서 회전 설정.
+	// 문 액터의 배열을 순회하면서 회전 설정.
 	for (const auto& Gate : Gates)
 	{
 		Gate.Value->SetRelativeRotation(FRotator::ZeroRotator);
 	}
 }
+
 void AABStageGimmick::OpponentDestroyed(AActor* DestroyedActor)
 {
 	// NPC가 죽으면 보상 단계로 설정.
@@ -283,21 +313,33 @@ void AABStageGimmick::OpponentDestroyed(AActor* DestroyedActor)
 void AABStageGimmick::OpponentSpawn()
 {
 	// NPC를 생성할 위치 설정.
-	const FVector SpawnLocation = GetActorLocation() + FVector::UpVector * 88.0f;
+	const FTransform SpawnTransform(GetActorLocation() + FVector::UpVector * 88.0f);
 
 	// NPC 생성.
-	AActor* OpponentActor = GetWorld()->SpawnActor(OpponentClass, &SpawnLocation, &FRotator::ZeroRotator);
+	AABCharacterNonPlayer* ABOpponentCharacter
+		= GetWorld()->SpawnActorDeferred<AABCharacterNonPlayer>(OpponentClass, SpawnTransform);
 
 	// NPC가 죽었을 때 발행되는 델리게이트에 등록.
-	AABCharacterNonPlayer* ABOpponentCharacter = Cast<AABCharacterNonPlayer>(OpponentActor);
+	//AABCharacterNonPlayer* ABOpponentCharacter = Cast<AABCharacterNonPlayer>(OpponentActor);
 	if (ABOpponentCharacter)
 	{
 		ABOpponentCharacter->OnDestroyed.AddDynamic(this, &AABStageGimmick::OpponentDestroyed);
+
+		// 현재 스테이지 레벨을 캐릭터 NPC 레벨로 설정.
+		ABOpponentCharacter->SetLevel(CurrentStageNum);
+
+		// 생성 완료 처리.
+		ABOpponentCharacter->FinishSpawning(SpawnTransform);
 	}
 }
 
-void AABStageGimmick::OnRewardTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void AABStageGimmick::OnRewardTriggerBeginOvelap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
 {
 	// 캐릭터가 보상 상자를 획득하면, 상자 배열을 순회하면서 처리 진행.
 	for (const auto& RewardBox : RewardBoxes)
@@ -328,13 +370,17 @@ void AABStageGimmick::SpawnRewardBoxes()
 	for (const auto& RewardBoxLocation : RewardBoxLocations)
 	{
 		// 박스 생성 위치.
-		FVector SpawnLocation = GetActorLocation() + RewardBoxLocation.Value + FVector(0.0f, 0.0f, 30.0f);
+		FVector SpawnLocation
+			= GetActorLocation()
+			+ RewardBoxLocation.Value
+			+ FVector(0.0f, 0.0f, 30.0f);
 
 		FTransform SpawnTransform(SpawnLocation);
 
 		// 박스 액터 생성.
 		// UObject / Actor.
-		AABItemBox* RewardBoxActor = GetWorld()->SpawnActorDeferred<AABItemBox>(
+		AABItemBox* RewardBoxActor
+			= GetWorld()->SpawnActorDeferred<AABItemBox>(
 				RewardItemClass,
 				SpawnTransform
 			);
@@ -349,7 +395,7 @@ void AABStageGimmick::SpawnRewardBoxes()
 
 			// 오버랩 이벤트에 등록.
 			RewardBoxActor->GetTrigger()->OnComponentBeginOverlap.AddDynamic(
-				this, &AABStageGimmick::OnRewardTriggerBeginOverlap
+				this, &AABStageGimmick::OnRewardTriggerBeginOvelap
 			);
 
 			// 생성된 아이템 상자를 배열에 추가.

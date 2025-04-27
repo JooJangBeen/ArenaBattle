@@ -16,42 +16,44 @@ public:
 	AABItemBox();
 
 	// Getter.
-	FORCEINLINE class UBoxComponent* GetTrigger() const { return TriggerBox; }
-	
+	FORCEINLINE class UBoxComponent* GetTrigger() const { return Trigger; }
+
 protected:
 	virtual void PostInitializeComponents() override;
 
 protected:
-	//박스 컴포넌트의 오버랩 델리게이트에 등록할 함수.
-	//OnComponentBeginOverlap 델리게이트는 다이나믹으로 지정되어 있기대문에
-	//UFUNCTION() 매크로를 지정해야 한다.
+
+	// 박스 컴포넌트의 오버랩 델리게이트에 등록할 함수.
+	// OnComponentBeginOverlap 델리게이트는 다이나믹으로 지정되어 있기 때문에
+	// UFUNCTION 매크로를 지정해야 함.
 	UFUNCTION()
-	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent,
+	void OnOverlapBegin(
+		UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor,
 		UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex,
 		bool bFromSweep,
-		const FHitResult& SweepResult);
+		const FHitResult& SweepResult
+	);
 
-	//파티클 재생 종료 시 발행되는 델리게이트에 등록 할 함수.
+	// 파티클 재생 종료 시 발행되는 델리게이트에 등록할 함수.
 	UFUNCTION()
-	void OnEffectFinished(class UParticleSystemComponent* PSystem );
+	void OnEffectFinished(class UParticleSystemComponent* PSystem);
 
 protected:
-	//액터의 충돌을 담당할 박스 컴포넌트.
+	// 액터의 충돌을 담당할 박스 컴포넌트.
 	UPROPERTY(VisibleAnywhere, Category = Box)
-	TObjectPtr<class UBoxComponent> TriggerBox;
+	TObjectPtr<class UBoxComponent> Trigger;
 
-	//아이템 박스를 보여줄 메시 컴포넌트.
+	// 아이템 박스를 보여줄 메시 컴포넌트.
 	UPROPERTY(VisibleAnywhere, Category = Box)
 	TObjectPtr<class UStaticMeshComponent> Mesh;
 
-	//박스와 상호작용 했을때 보여줄 파티클 효과 컴포넌트.(나이아가라 X)
+	// 박스와 상호작용했을 때 보여줄 파티클 효과 컴포넌트.
 	UPROPERTY(VisibleAnywhere, Category = Box)
 	TObjectPtr<class UParticleSystemComponent> Effect;
 
-	//아이템 정보.
+	// 아이템 정보.
 	UPROPERTY(EditAnywhere, Category = Item)
 	TObjectPtr<class UABItemData> Item;
-	
 };

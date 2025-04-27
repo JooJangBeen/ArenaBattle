@@ -8,7 +8,7 @@ DEFINE_LOG_CATEGORY(LogABGameSingleton);
 UABGameSingleton::UABGameSingleton()
 {
 	// 데이터 테이블 애셋 로드.
-	static ConstructorHelpers::FObjectFinder<UDataTable> DataTableRef(TEXT("/Game/ArenaBattle/GameData/ABCharacterStatTable.ABCharacterStatTable"));
+	static ConstructorHelpers::FObjectFinder<UDataTable> DataTableRef(TEXT("/Game/ArenaBattle/GameData/ABCharacterTable.ABCharacterTable"));
 	if (DataTableRef.Object)
 	{
 		// UDataTable는 Key/Value로 관리됨.
