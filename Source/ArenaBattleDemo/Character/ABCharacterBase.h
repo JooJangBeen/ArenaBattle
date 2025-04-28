@@ -75,6 +75,8 @@ protected:
 	//애님몽타주에서 제공하는 델리게이트와 파라미터 맞춤.
 	void ComboActionEnd(class UAnimMontage* TargetMontage, bool IsProperlyEnded);
 
+	virtual void NotifyComboActionEnd();
+
 	//콤보 타이머 설정 함수.
 	void SetComboCheckTimer();
 
