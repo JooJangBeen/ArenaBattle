@@ -5,13 +5,14 @@
 #include "CoreMinimal.h"
 #include "Character/ABCharacterBase.h"
 #include "InputActionValue.h"
+#include "Interface/ABCharacterHUDInterface.h"
 #include "ABCharacterPlayer.generated.h"
 /**
  * 
  */
 
 UCLASS()
-class ARENABATTLEDEMO_API AABCharacterPlayer : public AABCharacterBase
+class ARENABATTLEDEMO_API AABCharacterPlayer : public AABCharacterBase, public IABCharacterHUDInterface
 {
 	GENERATED_BODY()
 
@@ -19,6 +20,8 @@ public:
 	AABCharacterPlayer();
 	
 	virtual void BeginPlay() override;
+
+	virtual void SetDead() override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -64,5 +67,7 @@ protected:
 
 	//현재 사용 중인 캐릭터 모드.
 	ECharacterControlType CurrentCharacterControlType;
-	
+
+protected:
+	virtual void SetupHudWidget(class UABHUDWidget* InHUDWidget) override;
 };

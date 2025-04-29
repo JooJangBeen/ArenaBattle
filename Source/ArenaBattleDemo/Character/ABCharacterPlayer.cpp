@@ -4,14 +4,14 @@
 #include "Character/ABCharacterPlayer.h"
 
 #include "Camera/CameraComponent.h"
-#include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
-#include "GameFramework/CharacterMovementComponent.h"
 
 #include "ABCharacterControlData.h"
+#include "UI/ABHUDWidget.h"
+#include "CharacterStat/ABCharacterStatComponent.h"
 
 AABCharacterPlayer::AABCharacterPlayer()
 {
@@ -77,6 +77,27 @@ void AABCharacterPlayer::BeginPlay()
 
 	//입력 설정.
 	SetCharacterControl(CurrentCharacterControlType);
+
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+
+	if (PlayerController)
+	{
+		//입력 활성화
+		EnableInput(PlayerController);
+	}
+}
+
+void AABCharacterPlayer::SetDead()
+{
+	Super::SetDead();
+	
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+
+	if (PlayerController)
+	{
+		//입력 비활성화
+		DisableInput(PlayerController);
+	}
 }
 
 void AABCharacterPlayer::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
@@ -178,6 +199,22 @@ void AABCharacterPlayer::Attack()
 {
 	//공격 입력 처리 함수 호출.
 	ProcessComboCommand();
+}
+
+void AABCharacterPlayer::SetupHudWidget(class UABHUDWidget* InHUDWidget)
+{
+	if (InHUDWidget)
+	{
+		// 스탯 정보를 UI에 전달.
+		InHUDWidget->UpdateStat(Stat->GetBaseStat(), Stat->GetModifierStat());
+
+		// Hp 정보 전달.
+		InHUDWidget->UpdateHpBar(Stat->GetCurrentHp());
+		
+		// 델리게이트에 등록.
+		Stat->OnStatChanged.AddUObject(InHUDWidget, &UABHUDWidget::UpdateStat);
+		Stat->OnHpChanged.AddUObject(InHUDWidget, &UABHUDWidget::UpdateHpBar);
+	}
 }
 
 void AABCharacterPlayer::ShoulderMove(const FInputActionValue& Value)

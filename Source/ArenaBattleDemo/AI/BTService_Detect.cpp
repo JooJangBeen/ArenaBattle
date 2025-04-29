@@ -81,9 +81,7 @@ void UBTService_Detect::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeM
 			if (Pawn && Pawn->GetController()->IsPlayerController())
 			{
 				//감지한 플레이어를 블래보드에 저장.
-				OwnerComp.GetBlackboardComponent()->SetValueAsObject(
-					BBKEY_TARGET,
-					Pawn);
+				OwnerComp.GetBlackboardComponent()->SetValueAsObject(BBKEY_TARGET, Pawn);
 
 				//디버그 드로우를 활용해 감지 영역을 녹색으로 표시.
 				DrawDebugSphere(
