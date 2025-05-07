@@ -7,6 +7,8 @@
 #include "Character/ABCharacterNonPlayer.h"
 #include "Item/ABItemBox.h"
 #include "Engine/OverlapResult.h"
+#include "Interface/ABGameInterface.h"
+#include "GameFramework/GameModeBase.h"
 
 // Sets default values
 AABStageGimmick::AABStageGimmick()
@@ -306,6 +308,20 @@ void AABStageGimmick::CloseAllGates()
 
 void AABStageGimmick::OpponentDestroyed(AActor* DestroyedActor)
 {
+	//게임의 점수 처리 및 클리어 여부를 확인하기 위해 게임 모드 가져오기.
+	IABGameInterface* ABGameMode = Cast<IABGameInterface>(GetWorld()->GetAuthGameMode());
+
+	if (ABGameMode)
+	{
+		ABGameMode->OnPlayerScoreChanged(CurrentStageNum);
+
+		//게임이 클리어 됐는지 확인, 클리어 됐으면 함수 종료.
+		if (ABGameMode->IsGameCleared())
+		{
+			return;
+		}
+	}
+	
 	// NPC가 죽으면 보상 단계로 설정.
 	SetState(EStageState::Reward);
 }

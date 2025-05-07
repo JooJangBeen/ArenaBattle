@@ -584,3 +584,4 @@ FodyWeavers.xsd
 ### VisualStudio Patch ###
 # Additional files built by Visual Studio
 .idea/
+Package/Windows/ArenaBattleDemo/Content/Paks/

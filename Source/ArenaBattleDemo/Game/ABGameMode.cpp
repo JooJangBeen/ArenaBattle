@@ -2,6 +2,7 @@
 
 
 #include "ABGameMode.h"
+#include "Player/ABPlayerController.h"
 
 AABGameMode::AABGameMode()
 {
@@ -24,4 +25,50 @@ AABGameMode::AABGameMode()
 		PlayerControllerClass = PlayerControllerClassRef.Class;
 	}
 	//PlayerControllerClassRef = AABPlayerController::StaticClass();
+
+	//기본값 설정.
+	ClearScore = 3;
+	CurrentScore = 0;
+	bISCleared = false;
+}
+
+void AABGameMode::OnPlayerScoreChanged(int NewPlayerScore)
+{
+	//현재 점수를 새로운 점수로 업데이트.
+	CurrentScore = NewPlayerScore;
+
+	//플레이어 컨트롤러 가져오기.
+	AABPlayerController* ABPlayerController = Cast<AABPlayerController>(GetWorld()->GetFirstPlayerController());
+
+	if (ABPlayerController)
+	{
+		ABPlayerController->GameScoreChanged(CurrentScore);
+	}
+	
+	//게임 클리어 여부 확인.
+	if (CurrentScore >= ClearScore)
+	{
+		bISCleared = true;
+		
+		if (ABPlayerController)
+		{
+			ABPlayerController->GameClear();
+		}
+	}
+}
+
+void AABGameMode::OnPlayerDead()
+{
+	//플레이어 컨트롤러 가져오기.
+	AABPlayerController* ABPlayerController = Cast<AABPlayerController>(GetWorld()->GetFirstPlayerController());
+
+	if (ABPlayerController)
+	{
+		ABPlayerController->GameOver();
+	}
+}
+
+bool AABGameMode::IsGameCleared()
+{
+	return bISCleared;
 }
